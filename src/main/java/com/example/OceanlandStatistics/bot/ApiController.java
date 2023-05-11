@@ -1,5 +1,6 @@
 package com.example.OceanlandStatistics.bot;
 
+import com.example.OceanlandStatistics.PriceService;
 import com.example.OceanlandStatistics.config.AuthProperties;
 import com.example.OceanlandStatistics.config.PriceProperties;
 import com.example.OceanlandStatistics.model.*;
@@ -16,6 +17,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
@@ -25,29 +27,38 @@ import java.util.*;
 
 
 @RestController
-@RequiredArgsConstructor
 @Getter
 @Setter
 class ApiController {
     private RestTemplate restTemplate;
-    @Autowired
     private AuthProperties authProperties;
+    private double olandPrice;
+    private double waterPrice;
+    private double foodPrice;
+    private double woodPrice;
+    private double metalPrice;
+
+    private final PriceService priceService;
 
     @Autowired
-    private PriceProperties priceProperties;
-    private double olandPrice = 0.0032;
-    // 1 water'ın OLAND cinsinden değeri
-    private double waterPrice = 0.1599;
+    public ApiController(PriceService priceService) {
+        this.priceService = priceService;
+    }
 
-    // 1 food'un OLAND cinsinden değeri
-    private double foodPrice = 0.1784;
 
-    // 1 wood'un OLAND cinsinden değeri
-    private double woodPrice = 0.4331;
+    //her saat başı fiyatları güncelle
 
-    // 1 metal'in OLAND cinsinden değeri
-    private double metalPrice = 0.3497;
+    public void updatePricesFromDB() {
+        Price lastPrice = priceService.getLastPrices();
 
+        if (lastPrice != null) {
+            this.olandPrice = lastPrice.getOlandPrice();
+            this.waterPrice = lastPrice.getWaterPrice();
+            this.foodPrice = lastPrice.getFoodPrice();
+            this.woodPrice = lastPrice.getWoodPrice();
+            this.metalPrice = lastPrice.getMetalPrice();
+        }
+    }
 
     @GetMapping("/fetch-token")
     public String fetchToken() {
@@ -187,6 +198,9 @@ class ApiController {
     }
     @GetMapping("/calculate-daily-revenue")
     public RevenueStats calculateDailyRevenue() {
+
+        updatePricesFromDB();
+
         // Net 1 saatlik üretim değerlerini al
         ResourceStats resourceStats = calculateHourlyResourceStats();
 

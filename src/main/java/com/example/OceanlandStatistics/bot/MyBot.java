@@ -1,5 +1,9 @@
 package com.example.OceanlandStatistics.bot;
 
+import com.example.OceanlandStatistics.PriceRepository;
+import com.example.OceanlandStatistics.PriceService;
+import com.example.OceanlandStatistics.model.Price;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,6 +14,12 @@ public class MyBot extends TelegramLongPollingBot {
 
     private long chat_id;
 
+    @Autowired
+    private PriceService priceService;
+
+    @Autowired
+    private PriceRepository priceRepository;
+
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -18,7 +28,9 @@ public class MyBot extends TelegramLongPollingBot {
 
             // Burada, belirli bir mesaj alındığında API çağrısını başlatma ve sonucu gönderme işlemi başlatılır.
             if (message_text.equals("/start")) {
-                String apiResult = calculateRevenue();
+                ApiController apiController = new ApiController(priceService);
+                String apiResult = calculateRevenue(apiController);
+
                 SendMessage sendMessage = new SendMessage();
                 sendMessage.setChatId(chat_id);
                 sendMessage.setText(apiResult);
@@ -37,21 +49,65 @@ public class MyBot extends TelegramLongPollingBot {
                 } catch (TelegramApiException e) {
                     e.printStackTrace();
                 }
+            } else if (message_text.startsWith("/set")) {
+                String[] splitMessage = message_text.split(" ");
+                String command = splitMessage[0];
+                double price = Double.parseDouble(splitMessage[1]);
+
+                String savingResult;
+
+                switch (command) {
+                    case "/setoland":
+                        savingResult = priceService.saveOlandPrice(price);
+                        break;
+                    case "/setwater":
+                        savingResult = priceService.saveWaterPrice(price);
+                        break;
+                    case "/setfood":
+                        savingResult = priceService.saveFoodPrice(price);
+                        break;
+                    case "/setwood":
+                        savingResult = priceService.saveWoodPrice(price);
+                        break;
+                    case "/setmetal":
+                        savingResult = priceService.saveMetalPrice(price);
+                        break;
+                    default:
+                        savingResult = "Invalid command";
+                }
+
+                SendMessage sendMessage = new SendMessage();
+                sendMessage.setChatId(chat_id);
+                sendMessage.setText("Save is : " + savingResult);
+                try {
+                    execute(sendMessage);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
 
-    private String showCurrentValues() {
-        ApiController apiController = new ApiController();
-        return "Oland " + apiController.getOlandPrice() + "\n" +
-                "OWater " + apiController.getWaterPrice() + "\n" +
-                "OFood " + apiController.getFoodPrice() + "\n" +
-                "OWood " + apiController.getWoodPrice() + "\n" +
-                "OMetal " + apiController.getMetalPrice() + "\n" ;
+    public String showCurrentValues() {
+        Price lastPrices = getLastPrices();
+        if (lastPrices != null) {
+            return "Oland " + lastPrices.getOlandPrice() + "\n" +
+                    "OWater " + lastPrices.getWaterPrice() + "\n" +
+                    "OFood " + lastPrices.getFoodPrice() + "\n" +
+                    "OWood " + lastPrices.getWoodPrice() + "\n" +
+                    "OMetal " + lastPrices.getMetalPrice() + "\n";
+        }
+        return "No prices available";
+    }
+    private Price getLastPrices() {
+        try {
+            return priceRepository.findTopByOrderByIdDesc();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    private String calculateRevenue() {
-        ApiController apiController = new ApiController();
+    private String calculateRevenue(ApiController apiController) {
         return apiController.calculateDailyRevenue().toString();
     }
 
