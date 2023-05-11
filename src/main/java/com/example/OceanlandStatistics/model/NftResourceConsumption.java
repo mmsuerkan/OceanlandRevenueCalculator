@@ -1,19 +1,17 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.model;
 
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class NftResourceCraftCost {
+public class NftResourceConsumption {
     private int id;
     private int nft;
     private double water;
     private double food;
     private double wood;
     private double metal;
-    private double oland;
-    private double discountRate;
 
     // Getters and Setters
 }

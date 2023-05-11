@@ -1,5 +1,8 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.model;
 
+import com.example.OceanlandStatistics.model.NftResourceConsumption;
+import com.example.OceanlandStatistics.model.NftResourceCraftCost;
+import com.example.OceanlandStatistics.model.NftResourceReward;
 import lombok.Getter;
 import lombok.Setter;
 

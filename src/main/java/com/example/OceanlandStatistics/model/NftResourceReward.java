@@ -1,11 +1,11 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.model;
 
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class NftResourceConsumption {
+public class NftResourceReward {
     private int id;
     private int nft;
     private double water;

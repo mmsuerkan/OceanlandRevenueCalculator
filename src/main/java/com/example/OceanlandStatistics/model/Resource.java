@@ -1,4 +1,4 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

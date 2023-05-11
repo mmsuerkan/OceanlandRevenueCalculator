@@ -1,4 +1,4 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.config;
 
 import lombok.Getter;
 import lombok.Setter;

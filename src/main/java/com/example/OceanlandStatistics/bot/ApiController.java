@@ -1,13 +1,17 @@
-package com.example.OceanlandStatistics;
+package com.example.OceanlandStatistics.bot;
 
+import com.example.OceanlandStatistics.config.AuthProperties;
+import com.example.OceanlandStatistics.config.PriceProperties;
+import com.example.OceanlandStatistics.model.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.bonigarcia.wdm.WebDriverManager;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,14 +26,27 @@ import java.util.*;
 
 @RestController
 @RequiredArgsConstructor
+@Getter
+@Setter
 class ApiController {
     private RestTemplate restTemplate;
     @Autowired
-    private  AuthProperties authProperties;
+    private AuthProperties authProperties;
 
     @Autowired
-    private  PriceProperties priceProperties;
+    private PriceProperties priceProperties;
+    private double olandPrice = 0.0032;
+    // 1 water'ın OLAND cinsinden değeri
+    private double waterPrice = 0.1599;
 
+    // 1 food'un OLAND cinsinden değeri
+    private double foodPrice = 0.1784;
+
+    // 1 wood'un OLAND cinsinden değeri
+    private double woodPrice = 0.4331;
+
+    // 1 metal'in OLAND cinsinden değeri
+    private double metalPrice = 0.3497;
 
 
     @GetMapping("/fetch-token")
@@ -37,7 +54,7 @@ class ApiController {
         restTemplate = new RestTemplate();
 
         String apiUrl = "https://api.oceanland.io/api/auth/signin/email";
-        String requestBody = "{ \"chainid\": \"" + authProperties.getChainid() + "\", \"email\": \"" + authProperties.getEmail() + "\", \"password\": \"" + authProperties.getPassword() + "\" }";
+        String requestBody = "{ \"chainid\": \"" + "0x38" + "\", \"email\": \"" + "mmsuerkan@gmail.com" + "\", \"password\": \"" + "Mu102019*" + "\" }";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -178,21 +195,6 @@ class ApiController {
         double dailyFood = resourceStats.getNetFoodProduced() * 24;
         double dailyWood = resourceStats.getNetWoodProduced() * 24;
         double dailyMetal = resourceStats.getNetMetalProduced() * 24;
-
-        // 1 OLAND'ın değeri (dolar cinsinden)
-        double olandPrice = priceProperties.getOland();
-
-        // 1 water'ın OLAND cinsinden değeri
-        double waterPrice = priceProperties.getWater();
-
-        // 1 food'un OLAND cinsinden değeri
-        double foodPrice = priceProperties.getFood();
-
-        // 1 wood'un OLAND cinsinden değeri
-        double woodPrice = priceProperties.getWood();
-
-        // 1 metal'in OLAND cinsinden değeri
-        double metalPrice = priceProperties.getMetal();
 
         // Günlük OLAND kazancı
         double dailyOlandRevenue = (dailyWater * waterPrice) + (dailyFood * foodPrice) + (dailyWood * woodPrice) + (dailyMetal * metalPrice);
