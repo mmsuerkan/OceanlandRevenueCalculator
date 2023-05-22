@@ -1,13 +1,15 @@
-# fly.toml app configuration file generated for oceanlandstatistic-backend on 2023-05-01T19:19:59+03:00
+# fly.toml app configuration file generated for olstat on 2023-05-14T00:44:59+03:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "oceanlandstatistic-backend"
-primary_region = "cdg"
+app = "olstat"
+primary_region = "lhr"
 
 [http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
+internal_port = 8080
+force_https = true
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
+max_machines_running = 1

@@ -2,28 +2,24 @@ package com.example.OceanlandStatistics.bot;
 
 import com.example.OceanlandStatistics.PriceService;
 import com.example.OceanlandStatistics.config.AuthProperties;
-import com.example.OceanlandStatistics.config.PriceProperties;
 import com.example.OceanlandStatistics.model.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -84,7 +80,7 @@ class ApiController {
 
         return accessToken;
     }
-    @GetMapping("/fetch-detailed-equipment")
+    @GetMapping("/all-nfts-list")
     public List<DetailedEquipment> fetchDetailedEquipment() {
         String accessToken = fetchToken().substring("Access Token: ".length());
         String apiUrl = "https://api.oceanland.io/api/nfts";
@@ -97,24 +93,7 @@ class ApiController {
         ResponseEntity<DetailedEquipment[]> response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, DetailedEquipment[].class);
         return Arrays.asList(response.getBody());
     }
-    @GetMapping("/fetch-equipment-details")
-    public List<DetailedEquipment> fetchEquipmentDetails() {
-        List<Equipment> equippedEquipmentList = fetchEquipment(); // Kullanıcının ekipmanlarını çekin
-        List<DetailedEquipment> allEquipmentDetails = fetchDetailedEquipment(); // Tüm ekipmanların detaylarını çekin
-
-        List<DetailedEquipment> userEquipmentDetails = new ArrayList<>();
-
-        for (Equipment equipment : equippedEquipmentList) {
-            for (DetailedEquipment detailedEquipment : allEquipmentDetails) {
-                if (equipment.getNftId() == detailedEquipment.getId()) {
-                    userEquipmentDetails.add(detailedEquipment);
-                    break;
-                }
-            }
-        }
-
-        return userEquipmentDetails;
-    }
+    @GetMapping("/fetch-equipped-nfts")
     public List<Equipment> fetchEquipment() {
         String accessToken = fetchToken();
         String apiUrl = "https://api.oceanland.io/api/equip";
@@ -129,9 +108,54 @@ class ApiController {
         Equipment[] equipmentArray = response.getBody();
         return Arrays.asList(equipmentArray);
     }
+    @GetMapping("/fetch-mapped-equipped-nfts")
+    public List<DetailedEquipment> fetchEquippedNfts() {
+        List<DetailedEquipment> allEquipmentDetails = fetchDetailedEquipment(); // Tüm ekipmanların detaylarını çekin
+        List<Equipment> equippedEquipmentList = fetchEquipment(); // Kullanıcının ekipmanlarını çekin
+
+        List<DetailedEquipment> userEquipmentDetails = new ArrayList<>();
+
+        for (Equipment equipment : equippedEquipmentList) {
+            for (DetailedEquipment detailedEquipment : allEquipmentDetails) {
+                if (equipment.getNftId() == detailedEquipment.getId()) {
+                    userEquipmentDetails.add(detailedEquipment);
+                    break;
+                }
+            }
+        }
+
+        return userEquipmentDetails;
+    }
+    @GetMapping("/initial-full-craft-cost")
+    public CraftCost initialCraftCost(){
+        List<DetailedEquipment> nfts = fetchDetailedEquipment();
+
+        Map<String, List<DetailedEquipment>> collect = nfts.stream().filter(nft -> nft.getTier() == 1 && nft.getType().equals("TOOL")).collect(Collectors.groupingBy(DetailedEquipment::getResourceType));
+        double totalWood = 0;
+        double totalMetal = 0;
+        for (Map.Entry<String, List<DetailedEquipment>> entry : collect.entrySet()) {
+            List<DetailedEquipment> value = entry.getValue();
+            for (DetailedEquipment detailedEquipment : value) {
+                totalWood += detailedEquipment.getNftResourceCraftCostList().get(0).getWood();
+                totalMetal += detailedEquipment.getNftResourceCraftCostList().get(0).getMetal();
+            }
+        }
+        updatePricesFromDB();
+        double totalNeededOland = ((totalWood * woodPrice) + (totalMetal * metalPrice)) * 15;
+        double totalNeededUsdt = totalNeededOland * olandPrice;
+        CraftCost craftCost = new CraftCost();
+        craftCost.setTotalNeededOland(totalNeededOland);
+        craftCost.setTotalNeededUsdt(totalNeededUsdt);
+
+        System.out.println("Total Needed Oland: " + totalNeededOland);
+        System.out.println("Total Needed Usdt: " + totalNeededUsdt);
+
+        return craftCost;
+    }
+
     @GetMapping("/calculate-nft-stats")
     public List<NftStats> calculateNftStats() {
-        List<DetailedEquipment> userEquipmentDetails = fetchEquipmentDetails();
+        List<DetailedEquipment> userEquipmentDetails = fetchEquippedNfts();
 
         Map<String, NftStats> nftStatsMap = new HashMap<>();
 
@@ -169,7 +193,7 @@ class ApiController {
 
     @GetMapping("/calculate-hourly-resource-stats")
     public ResourceStats calculateHourlyResourceStats() {
-        List<DetailedEquipment> userEquipmentDetails = fetchEquipmentDetails();
+        List<DetailedEquipment> userEquipmentDetails = fetchEquippedNfts();
 
         ResourceStats resourceStats = new ResourceStats();
 
@@ -226,33 +250,73 @@ class ApiController {
         return new RevenueStats(dailyOlandRevenue, dailyUsdtRevenue, monthlyOlandRevenue, monthlyUsdtRevenue);
     }
 
-    @GetMapping("/resources")
-    public Resource getResources() throws Exception {
-        // WebDriverManager'ı kullanarak ChromeDriver'ı otomatik olarak indirin ve yükleyin
-        WebDriverManager.chromedriver().setup();
-
-        // Chrome tarayıcısını başlatın ve web sayfasını açın
-        WebDriver driver = new ChromeDriver();
-        driver.get("https://roi.oceanland.io/");
-
-        // Sayfanın yüklenmesini bekleyin
-        Thread.sleep(3000);
-
-        // Sayfanın kaynak kodunu alın ve JSoup ile işleyin
-        String html = driver.getPageSource();
-        Document doc = Jsoup.parse(html);
-
-        Element water = doc.select("div.resource-item.water span.resource-quantity").first();
-        Element food = doc.select("div.resource-item.food span.resource-quantity").first();
-        Element wood = doc.select("div.resource-item.wood span.resource-quantity").first();
-        Element metal = doc.select("div.resource-item.metal span.resource-quantity").first();
-
-        Resource resource = new Resource(water.text(), food.text(), wood.text(), metal.text());
-
-        // WebDriver'ı kapatın
-        driver.quit();
-
-        return resource;
+    @PostMapping("/start-nfts")
+    public ResponseEntity<String> startAllEquippedNFT() {
+         startAllEquippedNFTs();
+        return new ResponseEntity<>("Started all equipped NFTs.", HttpStatus.OK);
     }
+
+    ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
+    public void startAllEquippedNFTs() {
+        // Fetch equipped NFTs
+        List<Equipment> equippedNFTs = fetchEquipment();
+
+        // Filter NFTs with type TOOL
+        List<Equipment> tools = equippedNFTs.stream()
+                .filter(nft -> "TOOL".equals(nft.getNftType()))
+                .collect(Collectors.toList());
+
+        // Sort tools by next available time
+        tools.sort(Comparator.comparingLong(Equipment::getNextAvailableTime));
+
+        // Start all TOOL NFTs
+        for (Equipment tool : tools) {
+            startNFT(tool.getId());
+        }
+    }
+
+    public void startNFT(long id) {
+        String accessToken = fetchToken();
+        String apiUrl = "https://api.oceanland.io/api/mine/" + id;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + accessToken);
+
+        HttpEntity<String> request = new HttpEntity<>(headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, String.class);
+
+        // Optional: check the response
+        if (response.getStatusCode() == HttpStatus.OK) {
+            System.out.println("Successfully started NFT with id: " + id);
+        } else {
+            System.out.println("Failed to start NFT with id: " + id);
+        }
+    }
+
+    public Balance currentBalance() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String accessToken = fetchToken();
+        headers.set("Authorization", "Bearer " + accessToken);
+        HttpEntity<String> request = new HttpEntity<>(headers);
+
+
+        ResponseEntity<CurrentBalance> response = restTemplate.exchange("https://api.oceanland.io/api/users", HttpMethod.GET, request, CurrentBalance.class);
+        updatePricesFromDB();
+        double metalBalance = response.getBody().getMetalBalance();
+        double foodBalance = response.getBody().getFoodBalance();
+        double waterBalance = response.getBody().getWaterBalance();
+        double woodBalance = response.getBody().getWoodBalance();
+
+        double totalOland = metalBalance * metalPrice + foodBalance * foodPrice + waterBalance * waterPrice + woodBalance * woodPrice;
+        double totalUsdt = totalOland * olandPrice;
+
+
+        return new Balance(totalUsdt,totalOland);
+    }
+
 
 }

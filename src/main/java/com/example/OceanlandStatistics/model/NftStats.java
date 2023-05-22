@@ -17,4 +17,17 @@ public class NftStats {
     private double totalWoodReward;
     private double totalMetalReward;
 
+    @Override
+    public String toString() {
+        return "Nft Name : " + displayName + "\n" +
+                " Count=" + count + "\n" +
+                " TotalWaterConsumption=" + totalWaterConsumption + "\n" +
+                " TotalFoodConsumption=" + totalFoodConsumption + "\n" +
+                " TotalWoodConsumption=" + totalWoodConsumption + "\n" +
+                " TotalMetalConsumption=" + totalMetalConsumption + "\n" +
+                " TotalWaterReward=" + totalWaterReward + "\n" +
+                " TotalFoodReward=" + totalFoodReward + "\n" +
+                " TotalWoodReward=" + totalWoodReward + "\n" +
+                " TotalMetalReward=" + totalMetalReward + "\n" ;
+    }
 }

@@ -55,4 +55,15 @@ public class ResourceStats {
         return this.netMetalProduced = netMetalProduced;
     }
 
+    @Override
+    public String toString() {
+        return  "NetWater: " + netWaterProduced + "\n " +
+                "NetFood: " + netFoodProduced   + "\n " +
+                "NetWood: " + netWoodProduced   + "\n " +
+                "NetMetal: " + netMetalProduced + "\n"  +
+                "Daily Net Water: " + netWaterProduced * 24 + "\n " +
+                "Daily Net Food: " + netFoodProduced * 24  + "\n " +
+                "Daily Net Wood: " + netWoodProduced * 24  + "\n " +
+                "Daily Net Metal: " + netMetalProduced * 24 + "\n"  ;
+    }
 }
