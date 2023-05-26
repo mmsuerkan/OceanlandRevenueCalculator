@@ -258,7 +258,7 @@ class ApiController {
     }
 
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(fixedRate = 1000 *60 * 30)
     public void startAllEquippedNFTs() {
         // Fetch equipped NFTs
         List<Equipment> equippedNFTs = fetchEquipment();
@@ -276,6 +276,7 @@ class ApiController {
             startNFT(tool.getId());
         }
     }
+
 
     public void startNFT(long id) {
         String accessToken = fetchToken();
