@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -257,7 +258,7 @@ class ApiController {
     }
 
     ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-
+    @Scheduled(cron = "0 0 * * * *")
     public void startAllEquippedNFTs() {
         // Fetch equipped NFTs
         List<Equipment> equippedNFTs = fetchEquipment();
@@ -286,7 +287,7 @@ class ApiController {
 
         HttpEntity<String> request = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.GET, request, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, request, String.class);
 
         // Optional: check the response
         if (response.getStatusCode() == HttpStatus.OK) {
